@@ -1,5 +1,5 @@
-const {URL: RE_DESIGN_URL, TEMPLATE_PICTURE_TITLE_ARR, FILL_MODE, DESIGN_PICTURE_PATH} = require(`F:\\work\\node\\selenium\\config.js`)
-const DIRECTORY = 'F:\\work\\node'
+const {URL: RE_DESIGN_URL, TEMPLATE_PICTURE_TITLE_ARR, FILL_MODE, DESIGN_PICTURE_PATH} = require(`F:\\work\\selenium\\config.js`)
+const DIRECTORY = 'F:\\work'
 const path = require('path')
 const {Builder, By} = require('selenium-webdriver')
 const chrome = require('selenium-webdriver/chrome')

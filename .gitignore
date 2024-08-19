@@ -1,6 +1,6 @@
 .DS_Store
-!node_modules/selenium-webdriver/
 node_modules/
+!node_modules/selenium-webdriver/lib/http.js
 # local env files
 .env.local
 .env.*.local
