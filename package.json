@@ -12,7 +12,7 @@
   "dependencies": {
     "lodash": "^3.3.0",
     "pkg": "^5.8.1",
-    "selenium-webdriver": "^4.4.0"
+    "selenium-webdriver": "4.4.0"
   },
   "bin": "./index.js",
   "pkg": {

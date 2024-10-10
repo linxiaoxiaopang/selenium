@@ -1,9 +1,10 @@
 .DS_Store
 node_modules/
-!node_modules/selenium-webdriver/lib/http.js
+!node_modules/selenium-webdriver/
 # local env files
 .env.local
 .env.*.local
+temp/
 
 # Log files
 npm-debug.log*

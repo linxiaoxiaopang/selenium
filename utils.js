@@ -59,6 +59,7 @@ function parseUrl(urlString) {
 function getSystemUrls(urlString) {
     const {rootUrl, searchParamsObj, originAndPathname} = parseUrl(urlString)
     return {
+        productId: searchParamsObj.productId,
         login: `${rootUrl}login`,
         topic: rootUrl,
         design: `${originAndPathname}?protoId=${searchParamsObj.protoId}`,
@@ -83,7 +84,8 @@ function writeError(content) {
     console.log('content', content)
     try {
         fs.appendFileSync(path.resolve(__dirname, './error.txt'), content, 'utf8')
-    } catch {
+    } catch(err) {
+        console.log(`写入异常:${err}`)
     }
 }
 

@@ -1,59 +1,106 @@
-const {
-  URL: RE_DESIGN_URL,
-  TEMPLATE_PICTURE_TITLE_ARR,
-  FILL_MODE,
-  DESIGN_PICTURE_PATH
-} = require(`D:\\work\\selenium\\config.js`)
-const DIRECTORY = 'D:\\work'
-const path = require('path')
-const { Builder, By } = require('selenium-webdriver')
-const chrome = require('selenium-webdriver/chrome')
-const { flatten, uniq, map, isEqual } = require('lodash')
-const {
-  whileWait,
-  waitTimeByNum,
-  getSystemUrls,
-  createRandomNum,
-  getPictureTitles,
-  writeError,
-  formatDate
-} = require('./utils')
-const picList = getPictureTitles(DESIGN_PICTURE_PATH)
-
-const RENDER_MODE = 'fill'
-process.env.SE_MANAGER_PATH = `${DIRECTORY}\\selenium\\node_modules\\selenium-webdriver\\bin\\windows\\selenium-manager.exe`
-const newPath = `${DIRECTORY}\\selenium\\chromedriver-win64`
-process.env.PATH = `${newPath}${path.delimiter}${process.env.PATH}`
-console.log('process.env.PATH', process.env.PATH)
-const DESIGN_BY_SELF_LIST = [FILL_MODE]
-
 // 创建 WebDriver 实例
+const readline = require('readline')
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+})
+
+rl.question('按任意键退出...', () => {
+  rl.close()
+})
+const fs = require('fs')
+const DIRECTORY = 'D:\\work'
+
 try {
+  const {
+    URL: RE_DESIGN_URL,
+    TEMPLATE_PICTURE_TITLE_ARR,
+    DESIGN_PICTURE_PATH,
+    USER_NAME,
+    USER_PASSWORD,
+    DESIGN_TAB,
+    REFRESH_MAX_COUNT,
+    SKU_SUFFIX
+  } = require(`D:\\work\\selenium\\config.js`)
+  const path = require('path')
+  const { Builder, By } = require('selenium-webdriver')
+  const chrome = require('selenium-webdriver/chrome')
+  const { flatten, uniq, map, isEqual, sortBy } = require('lodash')
+  const {
+    whileWait,
+    waitTimeByNum,
+    getSystemUrls,
+    createRandomNum,
+    getPictureTitles,
+    formatDate
+  } = require('./utils')
+  const picList = getPictureTitles(DESIGN_PICTURE_PATH)
+  const FILL_MODE = getSystemUrls(RE_DESIGN_URL).productId ? '' : 'fill'
+  const RENDER_MODE = 'fill'
+  const DESIGN_TAB_PUBLIC = '图库'
+  let DESIGN_COUNT = 0
+  process.env.SE_MANAGER_PATH = `${DIRECTORY}\\selenium\\node_modules\\selenium-webdriver\\bin\\windows\\selenium-manager.exe`
+  const newPath = `${DIRECTORY}\\selenium\\chromedriver-win64`
+  process.env.PATH = `${newPath}${path.delimiter}${process.env.PATH}`
+  const DESIGN_BY_SELF_LIST = [FILL_MODE]
+  console.log('配置加载完成')
   ;(async function example() {
-    // 设置 Chrome 浏览器选项
+    //设置 Chrome 浏览器选项
+    console.log('设置 Chrome 浏览器选项')
+    const tempDir = `${DIRECTORY}\\selenium\\temp`
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir)
+    }
     let options = new chrome.Options()
     options.addArguments('start-maximized') // 启动时最大化窗口
+    options.addArguments(`--user-data-dir=${tempDir}`)
+    options.addArguments('--incognito')  // 使用隐身模式
+    options.addArguments('--disable-cache')  // 禁用缓存
     // 初始化 WebDriver
+    console.log('初始化 WebDriver')
     let driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build()
     console.log('driver build')
     try {
+      const wrapperClass = DESIGN_TAB === DESIGN_TAB_PUBLIC ? '.sharedPicLibraryComponent' : '.uploadDesignPicComponent'
+      const querySelector1 = createQuerySelector(wrapperClass)
+      const querySelectorAll1 = createQuerySelectorAll(wrapperClass)
       const isDesignBySelf = DESIGN_BY_SELF_LIST.includes(RENDER_MODE)
       const urlList = getSystemUrls(RE_DESIGN_URL)
       // 打开网页
       await driver.get(urlList.login)
       writeError(formatDate(new Date()))
+      console.log('登录页面加载完成')
       //登录
-      // const userName = await querySelector('[uiid="zd-name"]')
-      // userName.sendKeys(USER_NAME)
-      // const password = await querySelector('[uiid="zd-pwd"]')
-      // password.sendKeys(USER_PASSWORD)
+      if (USER_NAME && USER_PASSWORD) {
+        try {
+          await driver.executeScript(`
+           let element = document.querySelector('#app')
+           const context = element.__vue__
+           context.$message.info('等待页面加载完成，等待自动输入密码')
+        `)
+          const userName = await querySelector('input[uiid="zd-name"]')
+          userName.sendKeys(USER_NAME)
+          const password = await querySelector('input[uiid="zd-pwd"]')
+          password.sendKeys(USER_PASSWORD)
+          const loginBtn = await querySelector('button[uiid="zd-btn"]')
+          await loginBtn.click()
+        } catch {
+          console.log('发生错误，请手动输入密码')
+          await driver.executeScript(`
+           let element = document.querySelector('#app')
+           const context = element.__vue__
+           context.$message.error('发生错误，请手动输入密码')
+        `)
+        }
+      }
+
       //跳转到topic页面
       const currentUrl0 = urlList.login
       await whileWait(async () => {
         let currentUrl1 = await driver.getCurrentUrl()
-        console.log('currentUrl0 != currentUrl1', currentUrl0 != currentUrl1)
         return currentUrl0 != currentUrl1
       })
+      console.log('跳转首页')
       let designData = []
       let designTitles = []
 
@@ -63,11 +110,10 @@ try {
         await waitTimeByNum(3000)
         designData = await driver.executeScript(`
            let element = document.querySelector('.designContainerPage')
-           console.log('element', element);
            const fabricList = element.__vue__.fabricList
            return fabricList.map(item => {
             const canvas = item.canvas
-            const os = canvas.getObjects()
+            const os = canvas.getObjects().filter(o => o.type != 'group')
             const canvasOption = {
                 backgroundColor: canvas.backgroundColor
             }
@@ -89,7 +135,6 @@ try {
              const groupType = sItem.groupType
              const afterScaleWidth = width * scaleX
              const afterScaleHeight = height * scaleY    
-             console.log('groupType', groupType) 
              
              const option = {
                 originWidth: oWidth,
@@ -118,6 +163,7 @@ try {
         `)
         const designDataOsData = map(designData, 'os')
         designTitles = uniq(map(flatten(designDataOsData), 'title'))
+        console.log('designTitles', designTitles)
         await driver.get(urlList.topic)
         await waitTimeByNum(200)
       }
@@ -126,12 +172,20 @@ try {
 
       await pageLoaded()
 
+      if (DESIGN_TAB === DESIGN_TAB_PUBLIC) {
+        await waitTimeByNum(200)
+        const publicTabBtn = await querySelector('[uiid="zd-tuku"]')
+        await publicTabBtn.click()
+        await waitTimeByNum(400)
+      }
+      writeError(`定制总数:${picList.length}`)
       for (let i = 0; i < picList.length; i++) {
+        DESIGN_COUNT++
         const picTitleList = picList[i]
         if (!isDesignBySelf) {
           if (designTitles.length > 1) {
             if (TEMPLATE_PICTURE_TITLE_ARR.length) {
-              const isDiff = !isEqual(designTitles, TEMPLATE_PICTURE_TITLE_ARR)
+              const isDiff = !isEqual(sortBy(designTitles), sortBy(TEMPLATE_PICTURE_TITLE_ARR))
               if (isDiff) {
                 writeError(`TEMPLATE_PICTURE_TITLE_ARR:${TEMPLATE_PICTURE_TITLE_ARR},模板数据title:${designTitles}不一致`)
                 return
@@ -163,15 +217,15 @@ try {
 
 
         // 查找 searchIcon 元素并点击
-        let pictureTitleElement = await querySelector('.cate-and-search-component .search input')
+        let pictureTitleElement = await querySelector1('.cate-and-search-component .search input')
         if (!pictureTitleElement) {
-          let searchIcon = await querySelector('.cate-and-search-component .el-icon-search')
-          console.log('searchIcon', searchIcon)
+          let searchIcon = await querySelector1('.cate-and-search-component .el-icon-search')
           await searchIcon.click()
           // 查找 input 元素并输入文本
-          pictureTitleElement = await querySelector('.cate-and-search-component .search input')
+          pictureTitleElement = await querySelector1('.cate-and-search-component .search input')
         }
         let firstPicTitle = ''
+        let existPicClicked = false
         for (let j = 0; j < picTitleList.length; j++) {
           const picTitle = picTitleList[j]
           if (!firstPicTitle) firstPicTitle = picTitle
@@ -179,24 +233,51 @@ try {
           await pictureTitleElement.sendKeys(picTitle)
           //点击图片
           await whileWait([
-              () => {
-                return querySelector('.uploadDesignPicComponent .loading-wrapper')
+              async () => {
+                const element = await querySelector1('.loading-wrapper')
+                if (!element) {
+                  await waitTimeByNum(500)
+                  return true
+                }
+                return element
               },
               async () => {
-                return !(await querySelector('.uploadDesignPicComponent .loading-wrapper'))
+                return !(await querySelector1('.loading-wrapper'))
               }
             ]
           )
           await waitTimeByNum(20)
           //点击图片
-          const img = await querySelector('.hover-pic-popup-component .autoImgComponent')
-          if (!img) {
+          const imgList = await querySelectorAll1('.hover-pic-popup-component .autoImgComponent')
+          if (!imgList.length) {
             writeError(`${picTitle}图片不存在，已经被跳过定制。`)
             continue
           }
-          await img.click()
+          let fImg = null
+          if (imgList.length == 1) {
+            fImg = imgList[0]
+          } else {
+            try {
+              const titles = await driver.executeScript(`
+                  let elements = document.querySelectorAll(\`${wrapperClass} .hover-pic-popup-component\`)
+                  return [...elements].map(item => item.__vue__.data.title)
+              `)
+              const fIndex = titles.findIndex(title => title == picTitle)
+              if (fIndex >= 0) {
+                fImg = imgList[fIndex]
+              }
+            } catch {
+            }
+          }
+          if (!fImg) {
+            writeError(`${picTitle}图片不存在，已经被跳过定制。`)
+            continue
+          }
+          await fImg.click()
+          existPicClicked = true
           await waitTimeByNum(20)
         }
+        if (!existPicClicked) continue
 
         //画布加载渲染
         await canvasRendered()
@@ -227,8 +308,8 @@ try {
           //根据模板数据更新画布数据
           const pArr = await driver.executeScript(`
                    let element = document.querySelector('.designContainerPage')
-                   console.log('element', element);
-                   const fabricList = element.__vue__.fabricList
+                   const context = element.__vue__
+                   const fabricList = context.fabricList
                    const formData = ${JSON.stringify(designData)}
                    const formDesignTitles = ${JSON.stringify(designTitles)}
                    let FROM_TEMPLATE_PICTURE_TITLE_ARR = ${JSON.stringify(TEMPLATE_PICTURE_TITLE_ARR)}
@@ -284,8 +365,6 @@ try {
                        const groupType = rawO.groupType
                        const oScaleX = afterScaleWidth / o.width  
                        const oScaleY = afterScaleHeight / o.height
-                       console.log('oScaleX', oScaleX)
-                       console.log('oScaleY', oScaleY)
                        o.setOptions({
                            id: newOId,
                            picTitle: findO.picTitle,
@@ -298,18 +377,22 @@ try {
                            angle,
                            groupType
                        })
-                       pArr.push(...osPArr)
                        return o
                      })
+                     pArr.push(...osPArr)
                      Promise.all(osPArr).then(res => {
-                        res.map(o => {
+                        res.map(async o => {
+                           if(!o) return
                             canvas.add(o)
+                            if(o.groupType !== undefined) {
+                              await context.copyLayerTile(o.groupType, o, canvas, true)
+                            }
                             canvas.renderAll()
                         })
                         canvas.renderAll()
                         canvas.$cacheFrontDesignData = null
                      })
-                   })  
+                   })
                    return pArr
                 `)
 
@@ -322,17 +405,14 @@ try {
                    let element = document.querySelector('.designContainerPage')
                    const context = element.__vue__
                    const fabricList = context.fabricList
-                   console.log('fabricList', fabricList)
                    for(let i = 0; i < fabricList.length; i++) {
                        const canvas = fabricList[i].canvas
-                       console.log('canvas', canvas)
                        context.knifeActiveIndex = \`\${i}\`
                        await new Promise((resolve) => {
                          setTimeout(() => {
                            resolve(true)
                          }, 200)
                        })
-                       console.log('await')
                        const os = canvas.getObjects()
                        for(let j = 0; j < os.length; j++) {
                          const o = os[j]
@@ -349,7 +429,6 @@ try {
                                resolve(true)
                              }, 50)
                          })
-                         console.log('await1')
                        }
                        canvas.renderAll()
                    }
@@ -372,7 +451,11 @@ try {
         await whileWait(async () => {
           const skuPrefixEl = await querySelector('[uiid="zd-skuPrefix"]')
           if (skuPrefixEl) {
-            await skuPrefixEl.sendKeys(firstPicTitle)
+            let sku = firstPicTitle
+            if(SKU_SUFFIX) {
+              sku = sku + SKU_SUFFIX
+            }
+            await skuPrefixEl.sendKeys(sku)
             return true
           }
           return false
@@ -387,45 +470,101 @@ try {
         let keepToDesignEl = null
         await whileWait(async () => {
           const isError = await querySelector('.el-form-item__error')
-          if (isError) return true
+          if (isError) {
+            writeError(`${picTitleList}:sku重复`)
+            return true
+          }
           keepToDesignEl = await querySelector('.uiid-zd-success-cancel')
-          if (keepToDesignEl) return true
+          if (keepToDesignEl) {
+            writeError(`${picTitleList}:定制成功`)
+            return true
+          }
           return false
         })
         //保存成功
         if (keepToDesignEl) {
           keepToDesignEl.click()
         } else {
-          await driver.get(urlList.topic)
-          await waitTimeByNum(200)
-          await driver.get(urlList.design)
-          await pageLoaded()
+          const zdSkuDialog = await querySelector('.save-component-dialog_custom-class .dialog-footer .el-button--default')
+          await zdSkuDialog.click()
+          await waitTimeByNum(400)
+          await driver.executeScript(`
+                   let element = document.querySelector('.designContainerPage')
+                   const context = element.__vue__
+                   context.UPDATE_IS_CLEAR_ALL_CANVAS_DESIGN_DATA(true)
+            `
+          )
         }
+        if (DESIGN_COUNT > REFRESH_MAX_COUNT) {
+          DESIGN_COUNT = 1
+          await waitTimeByNum(400)
+          await driver.get(urlList.topic)
+          await driver.navigate().refresh()
+          await waitTimeByNum(2000)
+          writeError('刷新成功')
+          console.log('刷新成功')
+          console.log('urlList.design', urlList.design)
+          await driver.get(urlList.design)
+          console.log('跳转成功')
+          await pageLoaded()
+          if (DESIGN_TAB === DESIGN_TAB_PUBLIC) {
+            await waitTimeByNum(200)
+            const publicTabBtn = await querySelector('[uiid="zd-tuku"]')
+            await publicTabBtn.click()
+            await waitTimeByNum(400)
+          }
+        }
+
       }
+    } catch (err) {
+      writeError(err)
     } finally {
       // 关闭浏览器
-      // await driver.quit();
+      writeError('关闭浏览器')
+      console.log('关闭浏览器')
+      await waitTimeByNum(10000)
+      await driver.quit()
+      // 清理临时目录
+      fs.rmdirSync(tempDir, { recursive: true })
     }
 
-    async function querySelector(selector) {
-      try {
-        const element = await driver.findElement(By.css(selector))
-        const isDisplayed = await element.isDisplayed()
-        if (!isDisplayed) return null
-        return element
+    function createQuerySelector(wrapperSelector) {
+      return async function (selector) {
+        try {
+          if (wrapperSelector) {
+            selector = `${wrapperSelector} ${selector}`
+          }
+          const element = await driver.findElement(By.css(selector))
+          const isDisplayed = await element.isDisplayed()
+          if (!isDisplayed) return null
+          return element
 
-      } catch {
-        console.log('获取不到元素')
-        return null
+        } catch {
+          return null
+        }
       }
     }
 
-    async function querySelectorAll(selector) {
-      try {
-        return await driver.findElements(By.css(selector))
-      } catch {
-        return []
+    function createQuerySelectorAll(wrapperSelector) {
+      return async function (selector) {
+        try {
+          if (wrapperSelector) {
+            selector = `${wrapperSelector} ${selector}`
+          }
+          return await driver.findElements(By.css(selector))
+        } catch (err) {
+          console.log('errerr', err)
+          return []
+        }
       }
+    }
+
+    function querySelector(selector) {
+      return createQuerySelector()(selector)
+    }
+
+    function querySelectorAll(selector) {
+      return createQuerySelectorAll()(selector)
     }
 
     async function pageLoaded() {
@@ -434,7 +573,6 @@ try {
                 let element = document.querySelector('.designContainerPage')
                 if (!element) return false
                 const context = element.__vue__
-                console.log('context.loading', context.loading)
                 return !context.loading
             `
         )
@@ -444,11 +582,9 @@ try {
     async function canvasRendered() {
       await whileWait([async () => {
         return await driver.executeScript(`
-                console.log('canvasRendered')
                 let element = document.querySelector('.designContainerPage')
                 if (!element) return false
                 const context = element.__vue__
-                console.log('context.loading', context.loading)
                 return !context.loading
             `
         )
@@ -462,8 +598,21 @@ try {
         )
       }])
     }
-  })()
+  })();
 
 } catch (err) {
+  console.log('浏览器异常关闭，请查看error.txt文件中的错误信息')
+  writeError(err)
   console.log('err', err)
+}
+
+
+function writeError(content) {
+  content = `${content}\n`
+  try {
+    const path = `${DIRECTORY}\\selenium\\error.txt`
+    fs.appendFileSync(path, content, 'utf8')
+  } catch (err) {
+    console.log(`写入异常:${err}`)
+  }
 }

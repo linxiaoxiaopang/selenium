@@ -1,0 +1,12 @@
+将解压到在D盘根目录下，打开dist 文件中 'selenium.exe' 进行运行
+
+字段说明
+USER_NAME  账号名称
+USER_PASSWORD 账号密码
+DESIGN_TAB 定制页面图片tab  "我的" 或 "图库"，默认值 "我的"
+URL 定制页面url地址，从重新设计入口进入的是“模板模式”，脚本会根据模板数据，定制后续数据。产品详情进入的定制是“铺满模式”，所有图片都会进行铺满操作
+TEMPLATE_PICTURE_TITLE_ARR 可选 默认值为“空（[]）”,在模板模式下多张图片下进行配置，如果不配置，会根据选中图片进入画布的顺序进行匹配。
+DESIGN_PICTURE_PAT 图片上传文件地址，默认是 'D:\\work\\selenium\\designTitles.txt'
+
+文件说明
+error.txt 改文件记录着，上传的失败信息，上传结束后。可以根据这个文件查看上传结果。
