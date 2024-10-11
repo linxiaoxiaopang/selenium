@@ -34,9 +34,13 @@ try {
     getPictureTitles,
     formatDate
   } = require('./utils')
+  console.log(1)
   const { getCurrentConfig } = require('./const')
+  console.log(2)
+  console.log('RE_DESIGN_URL', RE_DESIGN_URL)
   //对内自营，对外分销的配置
   const config = getCurrentConfig(RE_DESIGN_URL)
+  console.log('3')
   const picList = getPictureTitles(DESIGN_PICTURE_PATH)
   const FILL_MODE = getSystemUrls(RE_DESIGN_URL).productId ? '' : 'fill'
   const RENDER_MODE = 'fill'
@@ -45,6 +49,7 @@ try {
   process.env.SE_MANAGER_PATH = `${DIRECTORY}\\selenium\\node_modules\\selenium-webdriver\\bin\\windows\\selenium-manager.exe`
   const newPath = `${DIRECTORY}\\selenium\\chromedriver-win64`
   process.env.PATH = `${newPath}${path.delimiter}${process.env.PATH}`
+  console.log(11111)
   const DESIGN_BY_SELF_LIST = [FILL_MODE]
   console.log('配置加载完成')
   ;(async function example() {
@@ -229,9 +234,6 @@ try {
         }
         let firstPicTitle = ''
         let existPicClicked = false
-        if(DESIGN_COUNT == 1) {
-          await config.beforeClickPicture(waitTimeByNum)
-        }
         for (let j = 0; j < picTitleList.length; j++) {
           const picTitle = picTitleList[j]
           if (!firstPicTitle) firstPicTitle = picTitle
@@ -249,9 +251,6 @@ try {
                 return element
               },
               async () => {
-                const res = await querySelector1(config.searchPictureLoading)
-                console.log('res', res)
-                return !res
                 return !(await querySelector1(config.searchPictureLoading))
               }
             ]
@@ -491,7 +490,7 @@ try {
             writeError(`${picTitleList}:sku重复`)
             return true
           }
-          keepToDesignEl = await querySelector('.uiid-zd-success .el-button--default')
+          keepToDesignEl = await querySelector('.uiid-zd-success-cancel')
           if (keepToDesignEl) {
             writeError(`${picTitleList}:定制成功`)
             return true
