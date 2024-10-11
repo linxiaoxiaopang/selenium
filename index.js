@@ -250,9 +250,7 @@ try {
               },
               async () => {
                 const res = await querySelector1(config.searchPictureLoading)
-                console.log('res', res)
                 return !res
-                return !(await querySelector1(config.searchPictureLoading))
               }
             ]
           )
