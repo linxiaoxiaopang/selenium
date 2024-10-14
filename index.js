@@ -437,7 +437,10 @@ try {
                                resolve(true)
                              }, 50)
                          })
-                         const fillBtn = document.querySelector('.iconfont.icon-shejiqi_puman')
+                         let fillBtn = document.querySelector('.iconfont.icon-shejiqi_puman')
+                         if(!fillBtn) {
+                            fillBtn = document.querySelector('.iconfont.icon-shejiqi-puman')
+                         }
                          fillBtn.click()
                          await new Promise((resolve) => {
                              setTimeout(() => {
